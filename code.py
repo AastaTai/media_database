@@ -1,13 +1,8 @@
 import MySQLdb
 import wx
 import wx.xrc
+import time
 import smtplib
-
-app = wx.App()
-
-db = MySQLdb.connect(host="localhost", user="user", password="user", db="mid")
-print ("connected")
-cur = db.cursor()
 
 class TabOne (wx.Panel):
     def __init__( self, parent ):
@@ -76,11 +71,32 @@ class TabOne (wx.Panel):
         self.m_button3 = wx.Button( self, wx.ID_ANY, u"Insert", wx.DefaultPosition, wx.DefaultSize, 0 )
         gSizer1.Add( self.m_button3, 0, wx.ALL, 5 )
                 
-                
         self.SetSizer( gSizer1 )
         self.Layout()
                 
         self.Centre( wx.BOTH )
+
+        self.m_button3.Bind(wx.EVT_BUTTON, self.onInsert)
+
+    def onInsert(self, event):
+        User = self.m_choice1.GetStringSelection()
+        Category = self.m_choice2.GetStringSelection()
+        Author = self.m_textCtrl2.GetValue()
+        Date = self.m_textCtrl3.GetValue()
+        Year = self.m_textCtrl4.GetValue()
+        Comment = self.m_textCtrl5.GetValue()
+        Rate = self.m_choice3.GetStringSelection()
+
+        print(User.lower())
+
+        cur.execute("Select * from {user}".format(user=User.lower()))
+        for emp in cur.fetchall():
+            print(emp)
+
+        print("Insert")
+        # print("Insert into {user} Values('{category}', '{author}', '{date}', '{year}', '{comment}', '{rate}')".format(category=Category, author=Author, date=Date, year=Year, comment=Comment, rate=Rate))
+        cur.execute("Insert into {user} Values('{category}', '{author}', '{date}', '{year}', '{comment}', '{rate}')".format(user=User, category=Category, author=Author, date=Date, year=Year, comment=Comment, rate=Rate))
+        db.commit()
             
 class TabTwo ( wx.Panel ):
 	
@@ -161,6 +177,87 @@ class TabTwo ( wx.Panel ):
                 
         self.Centre( wx.BOTH )
 
+        self.m_button2.Bind(wx.EVT_BUTTON, self.onSearch)
+        self.m_button7.Bind(wx.EVT_BUTTON, self.onUp)
+        self.m_button8.Bind(wx.EVT_BUTTON, self.onDown)
+        self.m_button3.Bind(wx.EVT_BUTTON, self.onModify)
+
+    def onSearch(self, event):
+        Category = self.m_choice4.GetStringSelection()
+        print("Search")
+        print("select * from alldata where category='{category}'".format(category=Category))
+        cur.execute("select * from alldata where category='{category}'".format(category=Category))
+        rows = cur.fetchall()
+
+        for i in range(len(rows)):
+            self.m_choice5Choices.append(str(i+1))
+        self.m_choice5.SetItems(self.m_choice5Choices)
+
+        self.texts = ["Results\n"]
+        num = 0
+        for row in rows:
+            num += 1
+            tmp = "{0:<10s}{1:<10s}{3:<10s}{4:<10s}{2:{5}<10s}\n".format(str(num), str(row[0]), str(row[2]), str(row[3]), str(row[4]), chr(12288))
+            self.texts.append(tmp)
+        temp = ""
+        for i in range(len(self.texts)):
+            if i < 6:
+                temp += str(self.texts[i])
+            else:
+                break
+        self.m_staticText26.SetLabel(temp)
+        db.commit()
+
+    def onUp(self, event):
+        print("up")
+        self.count -= 1
+        temp = "Results\n"
+        for i in range(len(self.texts)):
+            if i <= (self.count+1)*5 and i > self.count*5:
+                temp += str(self.texts[i])
+            else:
+                self.count += 1
+                break
+        self.m_staticText26.SetLabel(temp)
+        db.commit()
+
+    def onDown(self, event):
+        print("down")
+        self.count += 1
+        temp = "Results\n"
+        for i in range(len(self.texts)):
+            if i > (self.count-1)*5 and i <= self.count*5:
+                temp += str(self.texts[i])
+            else:
+                self.count -= 1
+                break
+        self.m_staticText26.SetLabel(temp)
+        db.commit()
+
+    def onModify(self, event):
+        Category = self.m_choice4.GetStringSelection()
+        Num = self.m_choice5.GetStringSelection()
+        ToModify = self.m_choice6.GetStringSelection()
+        Input = self.m_textCtrl6.GetValue()
+        print(Category, Num, ToModify, Input)
+
+        print("select * from alldata where category='{category}'".format(category=Category))
+        cur.execute("select * from alldata where category='{category}'".format(category=Category))
+        rows = cur.fetchall()
+        num = 0
+        for row in rows:
+            num += 1
+            if str(num) == str(Num):
+                print("in if")
+                user = row[0]
+                name = row[2]
+
+        print("Modify")
+        print("update alldata set {toModify}='{input}' where (user_name='{user}') and (category='{category}') and (name='{name}')".format(toModify=ToModify, input=Input, user=user, category=Category, name=name))
+        cur.execute("update alldata set {toModify}='{input}' where (user_name='{user}') and (category='{category}') and (name='{name}')".format(toModify=ToModify, input=Input, user=user, category=Category, name=name))
+        
+        db.commit()
+
 class TabThree ( wx.Panel ):
 	
     def __init__( self, parent ):
@@ -213,6 +310,52 @@ class TabThree ( wx.Panel ):
                 
         self.Centre( wx.BOTH )
 
+        self.m_button4.Bind(wx.EVT_BUTTON, self.onUpdate)
+
+    def onUpdate(self, event):
+        cur.execute("select * from alldata where category='{category}'".format(category="Book"))
+        rows = cur.fetchall()
+        text = "Books\n"
+        count = 0
+        for row in rows:
+            if count > 5:
+                break
+            count += 1
+            text += "{0:<8s}{1:{2}<10s}\n".format(str(row[3]), str(row[2]), chr(12288))
+        print(text)
+        self.m_staticText12.SetLabel(str(text))
+        cur.execute("select * from alldata where category='{category}'".format(category="Album"))
+        rows = cur.fetchall()
+        text = "Album\n"
+        count = 0
+        for row in rows:
+            if count > 5:
+                break
+            count += 1
+            text += "{0:<8s}{1:{2}<10s}\n".format(str(row[3]), str(row[2]), chr(12288))
+        self.m_staticText14.SetLabel(str(text))
+        cur.execute("select * from alldata where category='{category}'".format(category="Movie"))
+        rows = cur.fetchall()
+        text = "Movie\n"
+        count = 0
+        for row in rows:
+            if count > 5:
+                break
+            count += 1
+            text += "{0:<8s}{1:{2}<10s}\n".format(str(row[3]), str(row[2]), chr(12288))
+        self.m_staticText16.SetLabel(str(text))
+        cur.execute("select * from alldata where category='{category}'".format(category="Series"))
+        rows = cur.fetchall()
+        text = "Series\n"
+        count = 0
+        for row in rows:
+            if count > 5:
+                break
+            count += 1
+            text += "{0:<8s}{1:{2}<10s}\n".format(str(row[3]), str(row[2]), chr(12288))
+        self.m_staticText18.SetLabel(str(text))
+        db.commit()
+
 class TabFour ( wx.Panel ):
 	
     def __init__( self, parent ):
@@ -260,10 +403,116 @@ class TabFour ( wx.Panel ):
                 
         self.Centre( wx.BOTH )
 
+        self.m_button4.Bind(wx.EVT_BUTTON, self.onAdd)
+
+    def onAdd(self, event):
+        Name = self.m_textCtrl7.GetValue()
+        Email = self.m_textCtrl8.GetValue()
+        Notification = self.m_choice3.GetStringSelection()
+        print("insert into userinfo values('{name}', '{email}', '{notification}')".format(name=Name, email=Email, notification=Notification))
+        text = "Result:\n"
+        try:
+            cur.execute("insert into userinfo values('{name}', '{email}', '{notification}')".format(name=Name, email=Email, notification=Notification))
+            text += "successful :)"
+        except:
+            text += "failed :("
+        self.m_staticText2.SetLabel(str(text))
+        # create triger for new table
+        cur.execute("CREATE TABLE {user_name} (category VARCHAR(45), name VARCHAR(45), author_name VARCHAR(45), date VARCHAR(45), year VARCHAR(45), comment VARCHAR(45))".format(user_name=Name.lower()))
+        cur.execute("CREATE TRIGGER `AFTER_INSERT` AFTER INSERT ON {user_name} FOR EACH ROW BEGIN INSERT INTO alldata(user_name, category, name, year, date, comment) VALUE (NEW.name, NEW.category, NEW.name, NEW.year, NEW.date, NEW.comment); END".format(user_name=Name.lower()))
+        db.commit()
+
+class LoginPanel(wx.Panel):
+
+    def __init__(self, parent):
+        wx.Panel.__init__(self, parent)
+
+        # 頁面設計 + bind
+
+        self.SetSizeHints( wx.DefaultSize, wx.DefaultSize )
+		
+        gSizer12 = wx.GridSizer( 0, 2, 0, 0 )
+		
+        self.m_radioBtn6 = wx.RadioButton( self, wx.ID_ANY, u"Login", wx.DefaultPosition, wx.DefaultSize, 0 )
+        gSizer12.Add( self.m_radioBtn6, 0, wx.ALL, 5 )
+
+        self.m_radioBtn7 = wx.RadioButton( self, wx.ID_ANY, u"Create User", wx.DefaultPosition, wx.DefaultSize, 0 )
+        gSizer12.Add( self.m_radioBtn7, 0, wx.ALL, 5 )
+
+        self.m_staticText31 = wx.StaticText( self, wx.ID_ANY, u"User name", wx.DefaultPosition, wx.DefaultSize, 0 )
+        self.m_staticText31.Wrap( -1 )
+        gSizer12.Add( self.m_staticText31, 0, wx.ALL, 5 )
+
+        self.m_textCtrl17 = wx.TextCtrl( self, wx.ID_ANY, wx.EmptyString, wx.DefaultPosition, wx.DefaultSize, 0 )
+        self.m_textCtrl17.SetMinSize( wx.Size( 150,-1 ) )
+
+        gSizer12.Add( self.m_textCtrl17, 0, wx.ALL, 5 )
+
+        self.m_staticText32 = wx.StaticText( self, wx.ID_ANY, u"Password", wx.DefaultPosition, wx.DefaultSize, 0 )
+        self.m_staticText32.Wrap( -1 )
+        gSizer12.Add( self.m_staticText32, 0, wx.ALL, 5 )
+
+        self.m_textCtrl18 = wx.TextCtrl( self, wx.ID_ANY, wx.EmptyString, wx.DefaultPosition, wx.DefaultSize, 0 )
+        self.m_textCtrl18.SetMinSize( wx.Size( 150,-1 ) )
+
+        gSizer12.Add( self.m_textCtrl18, 0, wx.ALL, 5 )
+
+        self.m_staticText33 = wx.StaticText( self, wx.ID_ANY, u"Notification", wx.DefaultPosition, wx.DefaultSize, 0 )
+        self.m_staticText33.Wrap( -1 )
+        gSizer12.Add( self.m_staticText33, 0, wx.ALL, 5 )
+
+        m_choice8Choices = [ u"Yes", u"No" ]
+        self.m_choice8 = wx.Choice( self, wx.ID_ANY, wx.DefaultPosition, wx.DefaultSize, m_choice8Choices, 0 )
+        self.m_choice8.SetSelection( 0 )
+        self.m_choice8.SetMinSize( wx.Size( 150,-1 ) )
+
+        gSizer12.Add( self.m_choice8, 0, wx.ALL, 5 )
+
+        self.m_button11 = wx.Button( self, wx.ID_ANY, u"Enter", wx.DefaultPosition, wx.DefaultSize, 0 )
+        gSizer12.Add( self.m_button11, 0, wx.ALL, 5 )
+        self.m_button11.Bind(wx.EVT_BUTTON, self.onOpenResultFrame)
+
+        self.SetSizer( gSizer12 )
+        self.Layout()
+
+        self.Centre( wx.BOTH )
+        
+    def onOpenResultFrame(self, event):
+        loginResult.Show()
+
+class LoginResultPanel(wx.Panel):
+
+    def __init__(self, parent):
+        wx.Panel.__init__(self, parent)
+
+        self.SetSizeHints( wx.DefaultSize, wx.DefaultSize )
+
+        bSizer5 = wx.BoxSizer( wx.VERTICAL )
+
+        self.m_staticText34 = wx.StaticText( self, wx.ID_ANY, u"Result", wx.DefaultPosition, wx.DefaultSize, 0 )
+        self.m_staticText34.Wrap( -1 )
+        self.m_staticText34.SetMinSize( wx.Size( -1,100 ) )
+
+        bSizer5.Add( self.m_staticText34, 0, wx.ALL|wx.ALIGN_CENTER_HORIZONTAL, 5 )
+
+        self.m_button13 = wx.Button( self, wx.ID_ANY, u"OK!", wx.DefaultPosition, wx.DefaultSize, 0 )
+        bSizer5.Add( self.m_button13, 0, wx.ALIGN_CENTER_HORIZONTAL|wx.ALL, 5 )
+        self.m_button13.Bind(wx.EVT_BUTTON, self.onOpenMainFrame)
+
+        self.SetSizer( bSizer5 )
+        self.Layout()
+
+        self.Centre( wx.BOTH )
+
+    def onOpenMainFrame(self, event):
+        login.Close()
+        loginResult.Close()
+        main.Show()
+
 class MainFrame(wx.Frame):
+
     def __init__(self):
         wx.Frame.__init__(self, None, title="Sharing for All")
-         
         # Creating the Tab holders: Panel and Notebook
         p = wx.Panel(self)
         nb = wx.Notebook(p)
@@ -284,174 +533,29 @@ class MainFrame(wx.Frame):
         sizer = wx.BoxSizer()
         sizer.Add(nb, 1, wx.EXPAND)
         p.SetSizer(sizer)
-main = MainFrame()
 
-# tab 1
-def onInsert(event):
-    User = main.tab1.m_choice1.GetStringSelection()
-    Category = main.tab1.m_choice2.GetStringSelection()
-    Author = main.tab1.m_textCtrl2.GetValue()
-    Date = main.tab1.m_textCtrl3.GetValue()
-    Year = main.tab1.m_textCtrl4.GetValue()
-    Comment = main.tab1.m_textCtrl5.GetValue()
-    Rate = main.tab1.m_choice3.GetStringSelection()
+class LoginFrame(wx.Frame):
 
-    print(User.lower())
+    def __init__(self):
+        wx.Frame.__init__(self, None, title="Login")
+        pp = LoginPanel(self)
+        self.Show()
 
-    cur.execute("Select * from {user}".format(user=User.lower()))
-    for emp in cur.fetchall():
-        print(emp)
+class LoginResultFrame(wx.Frame):
 
-    print("Insert")
-    # print("Insert into {user} Values('{category}', '{author}', '{date}', '{year}', '{comment}', '{rate}')".format(category=Category, author=Author, date=Date, year=Year, comment=Comment, rate=Rate))
-    cur.execute("Insert into {user} Values('{category}', '{author}', '{date}', '{year}', '{comment}', '{rate}')".format(category=Category, author=Author, date=Date, year=Year, comment=Comment, rate=Rate))
+    def __init__(self):
+        wx.Frame.__init__(self, None, title="Login Result")
+        ppp = LoginResultPanel(self)        
+
+if __name__ == "__main__":
+    app = wx.App()
+
+    db = MySQLdb.connect(host="localhost", user="root", password="user", db="mid")
+    print ("connected")
+    cur = db.cursor()
+    loginResult = LoginResultFrame()
+    main = MainFrame()
+    login = LoginFrame()
+    app.MainLoop()
     db.commit()
-main.tab1.m_button3.Bind(wx.EVT_BUTTON, onInsert)
-
-# tab 2
-def onSearch(event):
-    Category = main.tab2.m_choice4.GetStringSelection()
-    print("Search")
-    print("select * from alldata where category='{category}'".format(category=Category))
-    cur.execute("select * from alldata where category='{category}'".format(category=Category))
-    rows = cur.fetchall()
-
-    for i in range(len(rows)):
-        main.tab2.m_choice5Choices.append(str(i+1))
-    main.tab2.m_choice5.SetItems(main.tab2.m_choice5Choices)
-
-    main.tab2.texts = ["Results\n"]
-    num = 0
-    for row in rows:
-        num += 1
-        tmp = "{0:<10s}{1:<10s}{3:<10s}{4:<10s}{2:{5}<10s}\n".format(str(num), str(row[0]), str(row[2]), str(row[3]), str(row[4]), chr(12288))
-        main.tab2.texts.append(tmp)
-    temp = ""
-    for i in range(len(main.tab2.texts)):
-        if i < 6:
-            temp += str(main.tab2.texts[i])
-        else:
-            break
-    main.tab2.m_staticText26.SetLabel(temp)
-    db.commit()
-main.tab2.m_button2.Bind(wx.EVT_BUTTON, onSearch)
-
-def onUp(event):
-    print("up")
-    main.tab2.count -= 1
-    temp = "Results\n"
-    for i in range(len(main.tab2.texts)):
-        if i <= (main.tab2.count+1)*5 and i > main.tab2.count*5:
-            temp += str(main.tab2.texts[i])
-        else:
-            main.tab2.count += 1
-            break
-    main.tab2.m_staticText26.SetLabel(temp)
-    db.commit()
-main.tab2.m_button7.Bind(wx.EVT_BUTTON, onUp)
-
-def onDown(event):
-    print("down")
-    main.tab2.count += 1
-    temp = "Results\n"
-    for i in range(len(main.tab2.texts)):
-        if i > (main.tab2.count-1)*5 and i <= main.tab2.count*5:
-            temp += str(main.tab2.texts[i])
-        else:
-            main.tab2.count -= 1
-            break
-    main.tab2.m_staticText26.SetLabel(temp)
-    db.commit()
-main.tab2.m_button8.Bind(wx.EVT_BUTTON, onDown)
-
-def onModify(event):
-    Category = main.tab2.m_choice4.GetStringSelection()
-    Num = main.tab2.m_choice5.GetStringSelection()
-    ToModify = main.tab2.m_choice6.GetStringSelection()
-    Input = main.tab2.m_textCtrl6.GetValue()
-    print(Category, Num, ToModify, Input)
-
-    print("select * from alldata where category='{category}'".format(category=Category))
-    cur.execute("select * from alldata where category='{category}'".format(category=Category))
-    rows = cur.fetchall()
-    num = 0
-    for row in rows:
-        num += 1
-        if str(num) == str(Num):
-            print("in if")
-            user = row[0]
-            name = row[2]
-
-    print("Modify")
-    print("update alldata set {toModify}='{input}' where (user_name='{user}') and (category='{category}') and (name='{name}')".format(toModify=ToModify, input=Input, user=user, category=Category, name=name))
-    cur.execute("update alldata set {toModify}='{input}' where (user_name='{user}') and (category='{category}') and (name='{name}')".format(toModify=ToModify, input=Input, user=user, category=Category, name=name))
-    
-    db.commit()
-main.tab2.m_button3.Bind(wx.EVT_BUTTON, onModify)
-
-# tab3
-def onUpdate(event):
-    cur.execute("select * from alldata where category='{category}'".format(category="Book"))
-    rows = cur.fetchall()
-    text = "Books\n"
-    count = 0
-    for row in rows:
-        if count > 5:
-            break
-        count += 1
-        text += "{0:<8s}{1:{2}<10s}\n".format(str(row[3]), str(row[2]), chr(12288))
-    print(text)
-    main.tab3.m_staticText12.SetLabel(str(text))
-    cur.execute("select * from alldata where category='{category}'".format(category="Album"))
-    rows = cur.fetchall()
-    text = "Album\n"
-    count = 0
-    for row in rows:
-        if count > 5:
-            break
-        count += 1
-        text += "{0:<8s}{1:{2}<10s}\n".format(str(row[3]), str(row[2]), chr(12288))
-    main.tab3.m_staticText14.SetLabel(str(text))
-    cur.execute("select * from alldata where category='{category}'".format(category="Movie"))
-    rows = cur.fetchall()
-    text = "Movie\n"
-    count = 0
-    for row in rows:
-        if count > 5:
-            break
-        count += 1
-        text += "{0:<8s}{1:{2}<10s}\n".format(str(row[3]), str(row[2]), chr(12288))
-    main.tab3.m_staticText16.SetLabel(str(text))
-    cur.execute("select * from alldata where category='{category}'".format(category="Series"))
-    rows = cur.fetchall()
-    text = "Series\n"
-    count = 0
-    for row in rows:
-        if count > 5:
-            break
-        count += 1
-        text += "{0:<8s}{1:{2}<10s}\n".format(str(row[3]), str(row[2]), chr(12288))
-    main.tab3.m_staticText18.SetLabel(str(text))
-    db.commit()
-main.tab3.m_button4.Bind(wx.EVT_BUTTON, onUpdate)
-
-# tab 4
-def onAdd(event):
-    Name = main.tab4.m_textCtrl7.GetValue()
-    Email = main.tab4.m_textCtrl8.GetValue()
-    Notification = main.tab4.m_choice3.GetStringSelection()
-    print("insert into userinfo values('{name}', '{email}', '{notification}')".format(name=Name, email=Email, notification=Notification))
-    text = "Result:\n"
-    try:
-        cur.execute("insert into userinfo values('{name}', '{email}', '{notification}')".format(name=Name, email=Email, notification=Notification))
-        text += "successful :)"
-    except:
-        text += "failed :("
-    main.tab4.m_staticText2.SetLabel(str(text))
-    db.commit()
-main.tab4.m_button4.Bind(wx.EVT_BUTTON, onAdd)
-
-main.Show()
-app.MainLoop()
-db.commit()
-db.close()
+    db.close()
