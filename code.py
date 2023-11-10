@@ -30,6 +30,13 @@ class TabOne (wx.Panel):
         self.m_choice2 = wx.Choice( self, wx.ID_ANY, wx.DefaultPosition, wx.DefaultSize, m_choice2Choices, 0 )
         self.m_choice2.SetSelection( 0 )
         gSizer1.Add( self.m_choice2, 0, wx.ALL, 5 )
+
+        self.m_staticText10 = wx.StaticText( self, wx.ID_ANY, u"Name", wx.DefaultPosition, wx.DefaultSize, 0 )
+        self.m_staticText10.Wrap( -1 )
+        gSizer1.Add( self.m_staticText10, 0, wx.ALL, 5 )
+                
+        self.m_textCtrl10 = wx.TextCtrl( self, wx.ID_ANY, wx.EmptyString, wx.DefaultPosition, wx.DefaultSize, 0 )
+        gSizer1.Add( self.m_textCtrl10, 0, wx.ALL, 5 )
                 
         self.m_staticText3 = wx.StaticText( self, wx.ID_ANY, u"Author", wx.DefaultPosition, wx.DefaultSize, 0 )
         self.m_staticText3.Wrap( -1 )
@@ -37,13 +44,6 @@ class TabOne (wx.Panel):
                 
         self.m_textCtrl2 = wx.TextCtrl( self, wx.ID_ANY, wx.EmptyString, wx.DefaultPosition, wx.DefaultSize, 0 )
         gSizer1.Add( self.m_textCtrl2, 0, wx.ALL, 5 )
-                
-        self.m_staticText4 = wx.StaticText( self, wx.ID_ANY, u"Date", wx.DefaultPosition, wx.DefaultSize, 0 )
-        self.m_staticText4.Wrap( -1 )
-        gSizer1.Add( self.m_staticText4, 0, wx.ALL, 5 )
-                
-        self.m_textCtrl3 = wx.TextCtrl( self, wx.ID_ANY, wx.EmptyString, wx.DefaultPosition, wx.DefaultSize, 0 )
-        gSizer1.Add( self.m_textCtrl3, 0, wx.ALL, 5 )
                 
         self.m_staticText5 = wx.StaticText( self, wx.ID_ANY, u"Year", wx.DefaultPosition, wx.DefaultSize, 0 )
         self.m_staticText5.Wrap( -1 )
@@ -81,21 +81,40 @@ class TabOne (wx.Panel):
     def onInsert(self, event):
         User = self.m_choice1.GetStringSelection()
         Category = self.m_choice2.GetStringSelection()
+        Name = self.m_textCtrl10.GetValue()
         Author = self.m_textCtrl2.GetValue()
-        Date = self.m_textCtrl3.GetValue()
         Year = self.m_textCtrl4.GetValue()
         Comment = self.m_textCtrl5.GetValue()
         Rate = self.m_choice3.GetStringSelection()
-
-        print(User.lower())
 
         cur.execute("Select * from {user}".format(user=User.lower()))
         for emp in cur.fetchall():
             print(emp)
 
         print("Insert")
-        # print("Insert into {user} Values('{category}', '{author}', '{date}', '{year}', '{comment}', '{rate}')".format(category=Category, author=Author, date=Date, year=Year, comment=Comment, rate=Rate))
-        cur.execute("Insert into {user} Values('{category}', '{author}', '{date}', '{year}', '{comment}', '{rate}')".format(user=User, category=Category, author=Author, date=Date, year=Year, comment=Comment, rate=Rate))
+        cur.execute("Insert into {user} Values('{category}', '{name}', '{author}', '{year}', '{comment}', '{rate}')".format(user=User, category=Category, author=Author, name=Name, year=Year, comment=Comment, rate=Rate))
+
+        # send recommendation email
+        if str(Rate) == "5":
+            print("Notification:")
+            cur.execute("select email from userinfo")
+            rows = cur.fetchall()
+            for email in rows:
+                print(email)
+                if email != "":
+                    smtp = smtplib.SMTP('smtp.gmail.com', 587)
+                    smtp.ehlo()
+                    smtp.starttls()
+                    smtp.login('hsinjutai@gmail.com','gjqoxlojsamgdybm')
+                    from_addr = 'hsinjutai@gmail.com'
+                    to_addr = email[0]
+                    msg = "Subject: Recommendation\n\nHi,\n\nRecommend you {category} {name} by {author}.\nEnjoy your time with it!\n\n{user_name}".format(user_name=User, category=Category, author=Author, name=Name)
+                    status = smtp.sendmail(from_addr, to_addr, msg)
+                    if status == {}:
+                        print("傳送成功")
+                    else:
+                        print("傳送失敗")
+                    smtp.close()
         db.commit()
             
 class TabTwo ( wx.Panel ):
@@ -159,7 +178,7 @@ class TabTwo ( wx.Panel ):
 
         gSizer5 = wx.GridSizer( 0, 3, 0, 0 )
 
-        m_choice6Choices = [ "name", "year", "date"] # 從資料庫抓
+        m_choice6Choices = [ "name", "year", "rate"] # 從資料庫抓
         self.m_choice6 = wx.Choice( self, wx.ID_ANY, wx.DefaultPosition, wx.DefaultSize, m_choice6Choices, 0 )
         self.m_choice6.SetSelection( 0 )
         gSizer5.Add( self.m_choice6, 0, wx.ALL, 5 )
@@ -189,6 +208,9 @@ class TabTwo ( wx.Panel ):
         cur.execute("select * from alldata where category='{category}'".format(category=Category))
         rows = cur.fetchall()
 
+        self.count = 1
+        self.m_choice5Choices = []
+        self.m_choice5.SetItems(self.m_choice5Choices)
         for i in range(len(rows)):
             self.m_choice5Choices.append(str(i+1))
         self.m_choice5.SetItems(self.m_choice5Choices)
@@ -209,28 +231,30 @@ class TabTwo ( wx.Panel ):
         db.commit()
 
     def onUp(self, event):
-        print("up")
         self.count -= 1
+        print("up", self.count)
+        print((self.count-1)*5+1, self.count*5)
         temp = "Results\n"
         for i in range(len(self.texts)):
-            if i <= (self.count+1)*5 and i > self.count*5:
+            if i >= (self.count-1)*5+1 and i <= self.count*5:
                 temp += str(self.texts[i])
-            else:
-                self.count += 1
-                break
+            # else:
+            #     self.count += 1
+            #     break
         self.m_staticText26.SetLabel(temp)
         db.commit()
 
     def onDown(self, event):
-        print("down")
         self.count += 1
+        print("down", self.count)
+        print((self.count-1)*5, self.count*5)
         temp = "Results\n"
         for i in range(len(self.texts)):
             if i > (self.count-1)*5 and i <= self.count*5:
                 temp += str(self.texts[i])
-            else:
-                self.count -= 1
-                break
+            # else:
+            #     self.count -= 1
+            #     break
         self.m_staticText26.SetLabel(temp)
         db.commit()
 
@@ -318,41 +342,44 @@ class TabThree ( wx.Panel ):
         text = "Books\n"
         count = 0
         for row in rows:
-            if count > 5:
+            if count > 2:
                 break
             count += 1
             text += "{0:<8s}{1:{2}<10s}\n".format(str(row[3]), str(row[2]), chr(12288))
-        print(text)
+        text += "\n"
         self.m_staticText12.SetLabel(str(text))
         cur.execute("select * from alldata where category='{category}'".format(category="Album"))
         rows = cur.fetchall()
         text = "Album\n"
         count = 0
         for row in rows:
-            if count > 5:
+            if count > 2:
                 break
             count += 1
             text += "{0:<8s}{1:{2}<10s}\n".format(str(row[3]), str(row[2]), chr(12288))
+        text += "\n"
         self.m_staticText14.SetLabel(str(text))
         cur.execute("select * from alldata where category='{category}'".format(category="Movie"))
         rows = cur.fetchall()
         text = "Movie\n"
         count = 0
         for row in rows:
-            if count > 5:
+            if count > 2:
                 break
             count += 1
             text += "{0:<8s}{1:{2}<10s}\n".format(str(row[3]), str(row[2]), chr(12288))
+        text += "\n"
         self.m_staticText16.SetLabel(str(text))
         cur.execute("select * from alldata where category='{category}'".format(category="Series"))
         rows = cur.fetchall()
         text = "Series\n"
         count = 0
         for row in rows:
-            if count > 5:
+            if count > 2:
                 break
             count += 1
             text += "{0:<8s}{1:{2}<10s}\n".format(str(row[3]), str(row[2]), chr(12288))
+        text += "\n"
         self.m_staticText18.SetLabel(str(text))
         db.commit()
 
@@ -427,9 +454,9 @@ class LoginPanel(wx.Panel):
     def __init__(self, parent):
         wx.Panel.__init__(self, parent)
 
-        # 頁面設計 + bind
-
         self.SetSizeHints( wx.DefaultSize, wx.DefaultSize )
+
+        self.LOGIN = False
 		
         gSizer12 = wx.GridSizer( 0, 2, 0, 0 )
 		
@@ -457,16 +484,14 @@ class LoginPanel(wx.Panel):
 
         gSizer12.Add( self.m_textCtrl18, 0, wx.ALL, 5 )
 
-        self.m_staticText33 = wx.StaticText( self, wx.ID_ANY, u"Notification", wx.DefaultPosition, wx.DefaultSize, 0 )
+        self.m_staticText33 = wx.StaticText( self, wx.ID_ANY, u"Notification\n\ninput email if you\nwant to receive", wx.DefaultPosition, wx.DefaultSize, 0 )
         self.m_staticText33.Wrap( -1 )
         gSizer12.Add( self.m_staticText33, 0, wx.ALL, 5 )
 
-        m_choice8Choices = [ u"Yes", u"No" ]
-        self.m_choice8 = wx.Choice( self, wx.ID_ANY, wx.DefaultPosition, wx.DefaultSize, m_choice8Choices, 0 )
-        self.m_choice8.SetSelection( 0 )
-        self.m_choice8.SetMinSize( wx.Size( 150,-1 ) )
+        self.m_textCtrl19 = wx.TextCtrl( self, wx.ID_ANY, wx.EmptyString, wx.DefaultPosition, wx.DefaultSize, 0 )
+        self.m_textCtrl19.SetMinSize( wx.Size( 150,-1 ) )
 
-        gSizer12.Add( self.m_choice8, 0, wx.ALL, 5 )
+        gSizer12.Add( self.m_textCtrl19, 0, wx.ALL, 5 )
 
         self.m_button11 = wx.Button( self, wx.ID_ANY, u"Enter", wx.DefaultPosition, wx.DefaultSize, 0 )
         gSizer12.Add( self.m_button11, 0, wx.ALL, 5 )
@@ -478,6 +503,36 @@ class LoginPanel(wx.Panel):
         self.Centre( wx.BOTH )
         
     def onOpenResultFrame(self, event):
+        print("login/create user")
+        if self.m_radioBtn6.GetValue() == True and self.m_radioBtn7.GetValue() == False:
+            Choice = "login"
+        else:
+            Choice = "add user"
+        User = self.m_textCtrl17.GetValue()
+        Password = self.m_textCtrl18.GetValue()
+        Notification = self.m_textCtrl19.GetValue()
+
+        if Choice == "add user":
+            print("insert into userinfo values('{name}', '{email}', '{password}')".format(name=User, email=Notification, password=Password))
+            text = "\n\nResult:\n"
+            try:
+                cur.execute("insert into userinfo values('{name}', '{email}', '{password}')".format(name=User, email=Notification, password=Password))
+                text += "successful :)"
+            except:
+                text += "failed :("
+            cur.execute("CREATE TABLE {user_name} (category VARCHAR(45), name VARCHAR(45), author_name VARCHAR(45), date VARCHAR(45), year VARCHAR(45), comment VARCHAR(45))".format(user_name=User.lower()))
+            cur.execute("CREATE TRIGGER `AFTER_INSERT` AFTER INSERT ON {user_name} FOR EACH ROW BEGIN INSERT INTO alldata(user_name, category, name, year, date, comment) VALUE (NEW.name, NEW.category, NEW.name, NEW.year, NEW.date, NEW.comment); END".format(user_name=User.lower()))
+        else:
+            cur.execute("select * from userinfo where name='{name}' and password='{password}'".format(name=User, password=Password))
+            if cur.fetchall() == ():
+                self.LOGIN = False
+                text = "\n\nResult:\nfailed :("
+            else:
+                self.LOGIN = True
+                text = "\n\nResult:\nsuccessful :)"
+        
+        loginResult.ppp.m_staticText34.SetLabel(str(text))
+        db.commit()
         loginResult.Show()
 
 class LoginResultPanel(wx.Panel):
@@ -507,12 +562,13 @@ class LoginResultPanel(wx.Panel):
     def onOpenMainFrame(self, event):
         login.Close()
         loginResult.Close()
-        main.Show()
+        if login.pp.LOGIN == True:
+            main.Show()
 
 class MainFrame(wx.Frame):
 
     def __init__(self):
-        wx.Frame.__init__(self, None, title="Sharing for All")
+        wx.Frame.__init__(self, None, title="Sharing for All", size=wx.Size(400, 480))
         # Creating the Tab holders: Panel and Notebook
         p = wx.Panel(self)
         nb = wx.Notebook(p)
@@ -521,13 +577,13 @@ class MainFrame(wx.Frame):
         self.tab1 = TabOne(nb)
         self.tab2 = TabTwo(nb)
         self.tab3 = TabThree(nb)
-        self.tab4 = TabFour(nb)
+        # self.tab4 = TabFour(nb)
 
         # add Tabs to Notebook and give a name to the Tabs
         nb.AddPage(self.tab1, "Insert")
         nb.AddPage(self.tab2, "Find + Modify")
         nb.AddPage(self.tab3, "Recommendation")
-        nb.AddPage(self.tab4, "Add User")
+        # nb.AddPage(self.tab4, "Add User")
 
         # Set noteboook in a sizer to create the layout
         sizer = wx.BoxSizer()
@@ -537,19 +593,18 @@ class MainFrame(wx.Frame):
 class LoginFrame(wx.Frame):
 
     def __init__(self):
-        wx.Frame.__init__(self, None, title="Login")
-        pp = LoginPanel(self)
+        wx.Frame.__init__(self, None, title="Login", size=wx.Size(400, 480))
+        self.pp = LoginPanel(self)
         self.Show()
 
 class LoginResultFrame(wx.Frame):
 
     def __init__(self):
-        wx.Frame.__init__(self, None, title="Login Result")
-        ppp = LoginResultPanel(self)        
+        wx.Frame.__init__(self, None, title="Login Result", size=wx.Size(300, 200))
+        self.ppp = LoginResultPanel(self)
 
 if __name__ == "__main__":
     app = wx.App()
-
     db = MySQLdb.connect(host="localhost", user="root", password="user", db="mid")
     print ("connected")
     cur = db.cursor()
