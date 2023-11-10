@@ -1,8 +1,8 @@
 import MySQLdb
 import wx
 import wx.xrc
-import time
 import smtplib
+import random
 
 class TabOne (wx.Panel):
     def __init__( self, parent ):
@@ -92,7 +92,8 @@ class TabOne (wx.Panel):
             print(emp)
 
         print("Insert")
-        cur.execute("Insert into {user} Values('{category}', '{name}', '{author}', '{year}', '{comment}', '{rate}')".format(user=User, category=Category, author=Author, name=Name, year=Year, comment=Comment, rate=Rate))
+        print("Insert into {user} Values('{category}', '{name}', '{author}', '{rate}', '{year}', '{comment}')".format(user=User.lower(), category=Category, author=Author, name=Name, year=Year, comment=Comment, rate=Rate))
+        cur.execute("Insert into {user} Values('{category}', '{name}', '{author}', '{rate}', '{year}', '{comment}')".format(user=User.lower(), category=Category, author=Author, name=Name, year=Year, comment=Comment, rate=Rate))
 
         # send recommendation email
         if str(Rate) == "5":
@@ -100,15 +101,15 @@ class TabOne (wx.Panel):
             cur.execute("select email from userinfo")
             rows = cur.fetchall()
             for email in rows:
-                print(email)
-                if email != "":
+                print(email[0])
+                if email[0] != "":
                     smtp = smtplib.SMTP('smtp.gmail.com', 587)
                     smtp.ehlo()
                     smtp.starttls()
                     smtp.login('hsinjutai@gmail.com','gjqoxlojsamgdybm')
                     from_addr = 'hsinjutai@gmail.com'
                     to_addr = email[0]
-                    msg = "Subject: Recommendation\n\nHi,\n\nRecommend you {category} {name} by {author}.\nEnjoy your time with it!\n\n{user_name}".format(user_name=User, category=Category, author=Author, name=Name)
+                    msg = "Subject: Recommendation\n\nHi,\n\nRecommend you {category} {name} by {author}.\nEnjoy your time with it!\n\n{user_name}".format(user_name=User, category=Category, author=Author, name=Name).encode('utf-8')
                     status = smtp.sendmail(from_addr, to_addr, msg)
                     if status == {}:
                         print("傳送成功")
@@ -219,7 +220,8 @@ class TabTwo ( wx.Panel ):
         num = 0
         for row in rows:
             num += 1
-            tmp = "{0:<10s}{1:<10s}{3:<10s}{4:<10s}{2:{5}<10s}\n".format(str(num), str(row[0]), str(row[2]), str(row[3]), str(row[4]), chr(12288))
+            tmp = "{num:<5s}{user:<s} / {year:<s} / {name:<s} / {rate:<s}\n".format(num=str(num), user=str(row[0]), name=str(row[2]), year=str(row[3]), rate=str(row[4]))
+            print(tmp)
             self.texts.append(tmp)
         temp = ""
         for i in range(len(self.texts)):
@@ -272,14 +274,12 @@ class TabTwo ( wx.Panel ):
         for row in rows:
             num += 1
             if str(num) == str(Num):
-                print("in if")
                 user = row[0]
                 name = row[2]
 
         print("Modify")
-        print("update alldata set {toModify}='{input}' where (user_name='{user}') and (category='{category}') and (name='{name}')".format(toModify=ToModify, input=Input, user=user, category=Category, name=name))
         cur.execute("update alldata set {toModify}='{input}' where (user_name='{user}') and (category='{category}') and (name='{name}')".format(toModify=ToModify, input=Input, user=user, category=Category, name=name))
-        
+        cur.execute("update {userDB} set {toModify}='{input}' where (category='{category}') and (name='{name}')".format(userDB=user.lower(), toModify=ToModify, input=Input, user=user, category=Category, name=name))
         db.commit()
 
 class TabThree ( wx.Panel ):
@@ -337,49 +337,73 @@ class TabThree ( wx.Panel ):
         self.m_button4.Bind(wx.EVT_BUTTON, self.onUpdate)
 
     def onUpdate(self, event):
-        cur.execute("select * from alldata where category='{category}'".format(category="Book"))
+        cur.execute("select * from alldata where category='{category}' and (rate=4 or rate=5)".format(category="Book"))
         rows = cur.fetchall()
         text = "Books\n"
-        count = 0
-        for row in rows:
-            if count > 2:
-                break
-            count += 1
-            text += "{0:<8s}{1:{2}<10s}\n".format(str(row[3]), str(row[2]), chr(12288))
-        text += "\n"
+        if len(rows) >= 3:
+            tmp = random.sample(rows, k=3)
+            for row in tmp:
+                text += "{0:<8s}{1:{2}<10s}\n".format(str(row[3]), str(row[2]), chr(12288))
+                print("{0:<8s}{1:{2}<10s}\n".format(str(row[3]), str(row[2]), chr(12288)))
+        else:
+            count = 0
+            for row in rows:
+                if count > 2:
+                    break
+                count += 1
+                text += "{0:<8s}{1:{2}<10s}\n".format(str(row[3]), str(row[2]), chr(12288))
         self.m_staticText12.SetLabel(str(text))
-        cur.execute("select * from alldata where category='{category}'".format(category="Album"))
+
+        cur.execute("select * from alldata where category='{category}' and (rate=4 or rate=5)".format(category="Album"))
         rows = cur.fetchall()
         text = "Album\n"
-        count = 0
-        for row in rows:
-            if count > 2:
-                break
-            count += 1
-            text += "{0:<8s}{1:{2}<10s}\n".format(str(row[3]), str(row[2]), chr(12288))
-        text += "\n"
+        if len(rows) >= 3:
+            tmp = random.sample(rows, k=3)
+            for row in tmp:
+                text += "{0:<8s}{1:{2}<10s}\n".format(str(row[3]), str(row[2]), chr(12288))
+                print("{0:<8s}{1:{2}<10s}\n".format(str(row[3]), str(row[2]), chr(12288)))
+        else:
+            count = 0
+            for row in rows:
+                if count > 2:
+                    break
+                count += 1
+                text += "{0:<8s}{1:{2}<10s}\n".format(str(row[3]), str(row[2]), chr(12288))
         self.m_staticText14.SetLabel(str(text))
-        cur.execute("select * from alldata where category='{category}'".format(category="Movie"))
+
+        cur.execute("select * from alldata where category='{category}' and (rate=4 or rate=5)".format(category="Movie"))
         rows = cur.fetchall()
         text = "Movie\n"
-        count = 0
-        for row in rows:
-            if count > 2:
-                break
-            count += 1
-            text += "{0:<8s}{1:{2}<10s}\n".format(str(row[3]), str(row[2]), chr(12288))
-        text += "\n"
+        if len(rows) >= 3:
+            tmp = random.sample(rows, k=3)
+            for row in tmp:
+                text += "{0:<8s}{1:{2}<10s}\n".format(str(row[3]), str(row[2]), chr(12288))
+                print("{0:<8s}{1:{2}<10s}\n".format(str(row[3]), str(row[2]), chr(12288)))
+        else:
+            count = 0
+            for row in rows:
+                if count > 2:
+                    break
+                count += 1
+                text += "{0:<8s}{1:{2}<10s}\n".format(str(row[3]), str(row[2]), chr(12288))
         self.m_staticText16.SetLabel(str(text))
-        cur.execute("select * from alldata where category='{category}'".format(category="Series"))
+
+        cur.execute("select * from alldata where category='{category}' and (rate=4 or rate=5)".format(category="Series"))
         rows = cur.fetchall()
         text = "Series\n"
-        count = 0
-        for row in rows:
-            if count > 2:
-                break
-            count += 1
-            text += "{0:<8s}{1:{2}<10s}\n".format(str(row[3]), str(row[2]), chr(12288))
-        text += "\n"
+        if len(rows) >= 3:
+            tmp = random.sample(rows, k=3)
+            for row in tmp:
+                text += "{0:<8s}{1:{2}<10s}\n".format(str(row[3]), str(row[2]), chr(12288))
+                print("{0:<8s}{1:{2}<10s}\n".format(str(row[3]), str(row[2]), chr(12288)))
+        else:
+            count = 0
+            for row in rows:
+                if count > 2:
+                    break
+                count += 1
+                text += "{0:<8s}{1:{2}<10s}\n".format(str(row[3]), str(row[2]), chr(12288))
+        
         self.m_staticText18.SetLabel(str(text))
         db.commit()
 
@@ -516,12 +540,17 @@ class LoginPanel(wx.Panel):
             print("insert into userinfo values('{name}', '{email}', '{password}')".format(name=User, email=Notification, password=Password))
             text = "\n\nResult:\n"
             try:
+                self.LOGIN = True
                 cur.execute("insert into userinfo values('{name}', '{email}', '{password}')".format(name=User, email=Notification, password=Password))
+                cur.execute("CREATE TABLE {user_name} (category VARCHAR(45), name VARCHAR(45), author_name VARCHAR(45), rate INT, year INT, comment VARCHAR(45))".format(user_name=User.lower()))
+                cur.execute("CREATE TRIGGER `AFTER_INSERT_{user_name}` AFTER INSERT ON {user_name} FOR EACH ROW BEGIN INSERT INTO alldata(user_name, category, name, year, rate, comment) VALUE ('{user_name}', NEW.category, NEW.name, NEW.year, NEW.rate, NEW.comment); END".format(user_name=User.lower()))
+                main.tab1.m_choice1.Append(User)
                 text += "successful :)"
             except:
+                self.LOGIN = False
                 text += "failed :("
-            cur.execute("CREATE TABLE {user_name} (category VARCHAR(45), name VARCHAR(45), author_name VARCHAR(45), date VARCHAR(45), year VARCHAR(45), comment VARCHAR(45))".format(user_name=User.lower()))
-            cur.execute("CREATE TRIGGER `AFTER_INSERT` AFTER INSERT ON {user_name} FOR EACH ROW BEGIN INSERT INTO alldata(user_name, category, name, year, date, comment) VALUE (NEW.name, NEW.category, NEW.name, NEW.year, NEW.date, NEW.comment); END".format(user_name=User.lower()))
+            # cur.execute("CREATE TABLE {user_name} (category VARCHAR(45), name VARCHAR(45), author_name VARCHAR(45), rate INT, year INT, comment VARCHAR(45))".format(user_name=User.lower()))
+            # cur.execute("CREATE TRIGGER `AFTER_INSERT_{user_name}` AFTER INSERT ON {user_name} FOR EACH ROW BEGIN INSERT INTO alldata(user_name, category, name, year, rate, comment) VALUE ({user_name}, NEW.category, NEW.name, NEW.year, NEW.rate, NEW.comment); END".format(user_name=User.lower()))
         else:
             cur.execute("select * from userinfo where name='{name}' and password='{password}'".format(name=User, password=Password))
             if cur.fetchall() == ():
