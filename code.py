@@ -407,71 +407,6 @@ class TabThree ( wx.Panel ):
         self.m_staticText18.SetLabel(str(text))
         db.commit()
 
-class TabFour ( wx.Panel ):
-	
-    def __init__( self, parent ):
-        wx.Panel.__init__(self, parent)
-
-        gSizer6 = wx.GridSizer( 0, 2, 0, 0 )
-		
-        self.m_staticText20 = wx.StaticText( self, wx.ID_ANY, u"Name", wx.DefaultPosition, wx.DefaultSize, 0 )
-        self.m_staticText20.Wrap( -1 )
-        gSizer6.Add( self.m_staticText20, 0, wx.ALL, 5 )
-                
-        self.m_textCtrl7 = wx.TextCtrl( self, wx.ID_ANY, wx.EmptyString, wx.DefaultPosition, wx.DefaultSize, 0 )
-        gSizer6.Add( self.m_textCtrl7, 0, wx.ALL, 5 )
-                
-        self.m_staticText21 = wx.StaticText( self, wx.ID_ANY, u"Email", wx.DefaultPosition, wx.DefaultSize, 0 )
-        self.m_staticText21.Wrap( -1 )
-        gSizer6.Add( self.m_staticText21, 0, wx.ALL, 5 )
-                
-        self.m_textCtrl8 = wx.TextCtrl( self, wx.ID_ANY, wx.EmptyString, wx.DefaultPosition, wx.DefaultSize, 0 )
-        gSizer6.Add( self.m_textCtrl8, 0, wx.ALL, 5 )
-                
-        self.m_staticText22 = wx.StaticText( self, wx.ID_ANY, u"Notification", wx.DefaultPosition, wx.DefaultSize, 0 )
-        self.m_staticText22.Wrap( -1 )
-        gSizer6.Add( self.m_staticText22, 0, wx.ALL, 5 )
-                
-        m_choice3Choices = ["Yes", "No"]
-        self.m_choice3 = wx.Choice( self, wx.ID_ANY, wx.DefaultPosition, wx.DefaultSize, m_choice3Choices, 0 )
-        self.m_choice3.SetSelection( 0 )
-        gSizer6.Add( self.m_choice3, 0, wx.ALL, 5 )
-                
-        self.m_button4 = wx.Button( self, wx.ID_ANY, u"Add User", wx.DefaultPosition, wx.DefaultSize, 0 )
-        gSizer6.Add( self.m_button4, 0, wx.ALL, 5 )
-                
-        self.m_staticText23 = wx.StaticText( self, wx.ID_ANY, wx.EmptyString, wx.DefaultPosition, wx.DefaultSize, 0 )
-        self.m_staticText23.Wrap( -1 )
-        gSizer6.Add( self.m_staticText23, 0, wx.ALL, 5 )
-                
-        self.m_staticText2 = wx.StaticText( self, wx.ID_ANY, u"Results", wx.DefaultPosition, wx.DefaultSize, 0 )
-        self.m_staticText2.Wrap( -1 )
-        gSizer6.Add( self.m_staticText2, 0, wx.ALL, 5 )
-                
-                
-        self.SetSizer( gSizer6 )
-        self.Layout()
-                
-        self.Centre( wx.BOTH )
-
-        self.m_button4.Bind(wx.EVT_BUTTON, self.onAdd)
-
-    def onAdd(self, event):
-        Name = self.m_textCtrl7.GetValue()
-        Email = self.m_textCtrl8.GetValue()
-        Notification = self.m_choice3.GetStringSelection()
-        print("insert into userinfo values('{name}', '{email}', '{notification}')".format(name=Name, email=Email, notification=Notification))
-        text = "Result:\n"
-        try:
-            cur.execute("insert into userinfo values('{name}', '{email}', '{notification}')".format(name=Name, email=Email, notification=Notification))
-            text += "successful :)"
-        except:
-            text += "failed :("
-        self.m_staticText2.SetLabel(str(text))
-        # create triger for new table
-        cur.execute("CREATE TABLE {user_name} (category VARCHAR(45), name VARCHAR(45), author_name VARCHAR(45), date VARCHAR(45), year VARCHAR(45), comment VARCHAR(45))".format(user_name=Name.lower()))
-        cur.execute("CREATE TRIGGER `AFTER_INSERT` AFTER INSERT ON {user_name} FOR EACH ROW BEGIN INSERT INTO alldata(user_name, category, name, year, date, comment) VALUE (NEW.name, NEW.category, NEW.name, NEW.year, NEW.date, NEW.comment); END".format(user_name=Name.lower()))
-        db.commit()
 
 class LoginPanel(wx.Panel):
 
@@ -486,9 +421,11 @@ class LoginPanel(wx.Panel):
 		
         self.m_radioBtn6 = wx.RadioButton( self, wx.ID_ANY, u"Login", wx.DefaultPosition, wx.DefaultSize, 0 )
         gSizer12.Add( self.m_radioBtn6, 0, wx.ALL, 5 )
+        self.m_radioBtn6.Bind(wx.EVT_RADIOBUTTON, self.onRadioLogin)
 
         self.m_radioBtn7 = wx.RadioButton( self, wx.ID_ANY, u"Create User", wx.DefaultPosition, wx.DefaultSize, 0 )
         gSizer12.Add( self.m_radioBtn7, 0, wx.ALL, 5 )
+        self.m_radioBtn7.Bind(wx.EVT_RADIOBUTTON, self.onRadioCreate)
 
         self.m_staticText31 = wx.StaticText( self, wx.ID_ANY, u"User name", wx.DefaultPosition, wx.DefaultSize, 0 )
         self.m_staticText31.Wrap( -1 )
@@ -503,7 +440,7 @@ class LoginPanel(wx.Panel):
         self.m_staticText32.Wrap( -1 )
         gSizer12.Add( self.m_staticText32, 0, wx.ALL, 5 )
 
-        self.m_textCtrl18 = wx.TextCtrl( self, wx.ID_ANY, wx.EmptyString, wx.DefaultPosition, wx.DefaultSize, 0 )
+        self.m_textCtrl18 = wx.TextCtrl( self, wx.ID_ANY, wx.EmptyString, wx.DefaultPosition, wx.DefaultSize, wx.TE_PASSWORD)
         self.m_textCtrl18.SetMinSize( wx.Size( 150,-1 ) )
 
         gSizer12.Add( self.m_textCtrl18, 0, wx.ALL, 5 )
@@ -543,14 +480,13 @@ class LoginPanel(wx.Panel):
                 self.LOGIN = True
                 cur.execute("insert into userinfo values('{name}', '{email}', '{password}')".format(name=User, email=Notification, password=Password))
                 cur.execute("CREATE TABLE {user_name} (category VARCHAR(45), name VARCHAR(45), author_name VARCHAR(45), rate INT, year INT, comment VARCHAR(45))".format(user_name=User.lower()))
-                cur.execute("CREATE TRIGGER `AFTER_INSERT_{user_name}` AFTER INSERT ON {user_name} FOR EACH ROW BEGIN INSERT INTO alldata(user_name, category, name, year, rate, comment) VALUE ('{user_name}', NEW.category, NEW.name, NEW.year, NEW.rate, NEW.comment); END".format(user_name=User.lower()))
+                cur.execute("CREATE TRIGGER `AFTER_INSERT_{user_name}` AFTER INSERT ON {user_name} FOR EACH ROW BEGIN INSERT INTO alldata(user_name, category, name, year, rate, comment) VALUE ('{user}', NEW.category, NEW.name, NEW.year, NEW.rate, NEW.comment); END".format(user_name=User.lower(), user=User))
                 main.tab1.m_choice1.Append(User)
                 text += "successful :)"
             except:
                 self.LOGIN = False
                 text += "failed :("
-            # cur.execute("CREATE TABLE {user_name} (category VARCHAR(45), name VARCHAR(45), author_name VARCHAR(45), rate INT, year INT, comment VARCHAR(45))".format(user_name=User.lower()))
-            # cur.execute("CREATE TRIGGER `AFTER_INSERT_{user_name}` AFTER INSERT ON {user_name} FOR EACH ROW BEGIN INSERT INTO alldata(user_name, category, name, year, rate, comment) VALUE ({user_name}, NEW.category, NEW.name, NEW.year, NEW.rate, NEW.comment); END".format(user_name=User.lower()))
+
         else:
             cur.execute("select * from userinfo where name='{name}' and password='{password}'".format(name=User, password=Password))
             if cur.fetchall() == ():
@@ -563,6 +499,15 @@ class LoginPanel(wx.Panel):
         loginResult.ppp.m_staticText34.SetLabel(str(text))
         db.commit()
         loginResult.Show()
+
+    def onRadioLogin(self, event):
+        self.m_staticText33.Show(False)
+        self.m_textCtrl19.Show(False)
+
+    def onRadioCreate(self, event):
+        self.m_staticText33.Show(True)
+        self.m_textCtrl19.Show(True)
+
 
 class LoginResultPanel(wx.Panel):
 
@@ -606,7 +551,6 @@ class MainFrame(wx.Frame):
         self.tab1 = TabOne(nb)
         self.tab2 = TabTwo(nb)
         self.tab3 = TabThree(nb)
-        # self.tab4 = TabFour(nb)
 
         # add Tabs to Notebook and give a name to the Tabs
         nb.AddPage(self.tab1, "Insert")
